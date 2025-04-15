@@ -1,0 +1,34 @@
+title 2 factor authentication for VLAB
+
+Client->Olat: login using user cedentials.
+Olat-->Client:Ack: User authentication successfull or failed.
+note left of Olat:Assuming the user is authentic, hence the \nlogin is successfull.
+
+note right of Client: Assuming the user is a teacher.
+Client->Olat: the teacher requests for 10 virtual labs for a \nparticular course and for a specific time period.
+
+Olat->Vlab: request to book n number of labs for a specific \n date and time.
+Vlab-->Olat: ACK: Lab bookin succuessfull. (booking token : x1y2z3)
+
+note over Olat: Store the booking token for that particular course.
+
+Olat->Client: ACK: Lab booked successfully.
+
+note over Olat: Assuming the containers will be allocated (dynamic allocation) \nto the students on the time when the student wants to use the vlab.
+
+Client->Olat: login using user cedentials. Assuming\n the user is a student.
+Olat-->Client:Ack: User authentication successfull or failed.
+
+
+note right of Client: The student enters the available course for \nwhich the teacher had booked the labs. 
+Client->Olat: Student requests for vlab.
+
+Olat->Vlab: Vlab request:\n  { courseid:"45624",\nusername:"john",\nbookingToken:"x1y2z3" }
+
+note over Vlab : Based on the course id verify the booking token \nand create a vlab container with dynamic password and \nstore the details in DB.
+
+Vlab-->Olat: ACK :\n {  link:"https://12.36.45.95:5003",\npassword:"qwe963" }
+
+Olat-->Client: Open the link in new tab and show the password \nto the student in OLAT. 
+
+note right of Client: The link opens automatically in new tab and using the password \n the student cann login to the container (workspace).

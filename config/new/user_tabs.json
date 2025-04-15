@@ -1,0 +1,53 @@
+{
+    "Admin":{
+        "tab_list":[
+            {"Name":"Entity Config"},
+            {"Name":"Network Config"},
+            {"Name":"System Config"},
+            {"Name":"Event Config"}
+        ]
+    },
+    "Admin1":{
+        "tab_list":[
+            {"Name":"Entity","function":"get_entity_list(0)"},
+            {"Name":"Resource","function":"get_resource_list(0)"},
+            {"Name":"Event","function":"get_event_list(0)"},
+            {"Name":"Alert","function":"get_alert_list(0)"},
+            {"Name":"Messages","function":"get_message_list(0)"},
+            {"Name":"Subscriber","function":"get_subscriber_list(0)"},
+            {"Name":"Appointment","function":"get_appointment_list()"},
+            {"Name":"Log","function":"get_Log_list()"},
+            {"Name":"EntityConfig","function":"get_EntityConfig_list(0)"},
+            {"Name":"NetworkConfig","function":"get_NetworkConfig_list(0)"},
+            {"Name":"SystemConfig","function":"get_SystemConfig_list(0)"}
+       
+        ]
+    },
+    "User":{
+        "tab_list":[
+            {"Name":"Entity","function":"get_entity_list(0)"},
+            {"Name":"Resource","function":"get_resource_list(0)"},
+            {"Name":"Event","function":"get_event_list(0)"},
+            {"Name":"Alert","function":"get_alert_list(0)"},
+            {"Name":"Appointment","function":"get_appointment_list()"}
+        ]
+    },
+    "Finance_admin":{
+        "tab_list":[
+            {"Name":"Entity","function":"get_entity_list(0)"},
+            {"Name":"Resource","function":"get_resource_list(0)"},
+            {"Name":"Event","function":"get_event_list(0)"},
+            {"Name":"Alert","function":"get_alert_list(0)"},
+            {"Name":"Appointment","function":"get_appointment_list()"}
+        ]
+    },
+    "Campaign_admin":{
+        "tab_list":[
+            {"Name":"Entity","function":"get_entity_list(0)"},
+            {"Name":"Resource","function":"get_resource_list(0)"},
+            {"Name":"Event","function":"get_event_list(0)"},
+            {"Name":"Alert","function":"get_alert_list(0)"},
+            {"Name":"Appointment","function":"get_appointment_list()"}
+        ]
+    }
+}

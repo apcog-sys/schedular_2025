@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Scheduler</title>
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+    <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
+    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css"> -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.9/html5-qrcode.min.js"></script>
+    <!-- QR Image Scanner -->
+    <script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
+
+
+    <!-- Custom Styles -->
+    <style>
+        /* Right Sidebar Styles */
+        #show_columns_panel {
+            position: fixed;
+            top: 0;
+            right: -300px; /* Initially hidden */
+            width: 300px;
+            height: 100vh;
+            background-color: #f8f9fa;
+            transition: right 0.3s ease-in-out;
+            z-index: 1050;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.2);
+            padding: 15px;
+        }
+
+        /* Open state */
+        #show_columns_panel.open {
+            right: 0;
+        }
+
+        /* Toggle button */
+        .show-columns-toggle {
+            position: fixed;
+            top: 60%;
+            right: 0;
+            transform: translateY(-50%);
+            background: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            z-index: 1100;
+            transition: right 0.3s ease-in-out;
+            border-radius: 5px 0 0 5px;
+        }
+
+        /* Button moves with sidebar */
+        .show-columns-toggle.open {
+            right: 300px;
+        }
+         /* Sidebar Styles */
+         #tab_page_filter {
+            position: fixed;
+            top: 0;
+            left: -300px; /* Initially hidden */
+            width: 300px;
+            height: 100vh;
+            background-color: #f8f9fa;
+            transition: left 0.3s ease-in-out;
+            z-index: 1050;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.2);
+            padding: 15px;
+        }
+
+        /* Open state */
+        #tab_page_filter.open {
+            left: 0;
+        }
+
+        /* Toggle button */
+        .filter-toggle {
+            position: fixed;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+            background: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            z-index: 1100;
+            transition: left 0.3s ease-in-out;
+            border-radius: 0 5px 5px 0;
+        }
+
+        /* Button moves with sidebar */
+        .filter-toggle.open {
+            left: 300px;
+        }
+
+        /* Sidebar Styles */
+       
+
+
+
+
+        #calendar {
+            max-width: 100%;
+            height: 80vh; /* Set height dynamically */
+            margin: auto;
+        }
+
+        /* Make only this modal fullscreen */
+        #myCalendar .modal-dialog {
+            width: 100%;
+            max-width: 100%;
+            height: 100%;
+            margin: 0;
+        }
+
+        #myCalendar .modal-content {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            border-radius: 0; /* Remove rounded corners */
+        }
+
+        #myCalendar .modal-body {
+            flex-grow: 1; /* Make body take up remaining space */
+            overflow: auto;
+        }
+
+        #myCalendar .modal-footer {
+            border-top: none;
+        }
+
+        /* Ensure FullCalendar adjusts properly */
+        #calendar {
+            height: calc(100% - 50px); /* Adjust height to fit */
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f8f9fa;
+        }
+
+        #title_header {
+            background-color: #007bff;
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            margin: 0;
+            font-weight: bold;
+        }
+
+        .nav-tabs {
+            border-bottom: 2px solid #007bff;
+        }
+
+        .nav-tabs > li > a {
+            color: #007bff;
+            font-weight: bold;
+        }
+
+        .nav-tabs > li.active > a,
+        .nav-tabs > li.active > a:focus,
+        .nav-tabs > li.active > a:hover {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .tab-content {
+            background-color: white;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+       
+
+        .modal {
+            display: none;
+            position: fixed;
+            padding-top: 50px;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            margin: auto;
+            width: 60%;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, .5);
+            border-radius: 10px;
+            animation: animatetop 0.4s;
+        }
+
+        .modal-header {
+            border-bottom: none;
+        }
+
+        .close-btn {
+            float: right;
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close-btn:hover {
+            color: #000;
+        }
+
+        @keyframes animatetop {
+            from { top: -300px; opacity: 0; }
+            to { top: 0; opacity: 1; }
+        }
+
+        #div_iframe {
+            margin-top: 20px;
+        }
+
+        iframe {
+            border: none;
+            border-radius: 5px;
+        }
+
+        #footer {
+            background-color: #343a40;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        #footer a {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        #footer a:hover {
+            text-decoration: underline;
+        }
+
+        .dropdown-select {
+            appearance: none; /* Hide default dropdown arrow */
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            width: 100%;
+            padding: 10px;
+            padding-right: 30px; /* Space for arrow */
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: white;
+            cursor: pointer;
+        }
+        .custom-dropdown {
+            position: relative;
+            display: inline-block;
+            width: 20%;
+        }
+        /* Custom dropdown arrow */
+        .custom-dropdown::after {
+            content: "▼"; /* Unicode for dropdown arrow */
+            font-size: 14px;
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            pointer-events: none; /* Prevent interaction with the arrow */
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+    <!--<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script> 
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>-->
+    <!-- Include jQuery first 
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script> -->
+    <!-- Then Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Then FullCalendar JS -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <!-- Finally, your custom script -->
+    <!-- Header -->
+    <div id="title_header">
+        <h2>APCOG Scheduler</h2>
+    </div>
+
+    <!-- Main Content -->
+    <div id="main_page_tab_div" class="container">
+
+        <ul id="tab_list" class="nav nav-tabs">
+            <!-- Tabs will be added dynamically -->
+        </ul>
+        <div id="tab_page_header" style="display: none;" class="tab-content form-horizontal">
+        </div>
+        <!-- Sidebar -->
+        <div id="tab_page_filter" class="tab-content form-horizontal">
+            <h4>Filter Options</h4>
+            <!-- Add filter form elements -->
+        </div>
+
+        <!-- Toggle Button -->
+        
+        <button id="filter_btn" class="filter-toggle" style="display: none;"  onclick="toggleFilter()">
+            <i class="bi bi-funnel"></i> <!-- Bootstrap Filter Icon -->
+        </button>
+
+        <!-- Right Sidebar -->
+        <div id="show_columns_panel">
+            <h4>Show Columns</h4>
+            <p>Include your column selection options here...</p>
+            <!-- Add column selection checkboxes or options -->
+        </div>
+
+        <!-- Toggle Button -->
+        <button id="show_btn" class="show-columns-toggle " style="display: none;" onclick="toggleShowColumns()">
+            <i class="bi bi-search"></i>
+        </button>
+
+        <div id="tab_page_content" style="display: none;" class="tab-content form-horizontal">
+            <!-- Tab content will be added dynamically -->
+           
+            
+        </div>
+        
+    </div>
+
+    
+    
+        <!-- Modal -->
+        <div class="modal" id="myModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <!-- Modal Header -->
+                    <div class="modal-header">
+                        <h4 id="modal_title" class="modal-title"></h4>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+        
+                    <!-- Modal Body -->
+                    <div class="modal-body" style="max-height: 50vh; overflow-y: auto;">
+                        <div id="modal_content">
+                            <form id="editForm"></form>
+                            <!-- Dynamic modal content -->
+                        </div>
+                    </div>
+        
+                    <!-- Modal Footer -->
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="saveChanges">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        
+        <div class="modal" id="registrationModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <!-- Modal Header -->
+                    <div class="modal-header">
+                        <h4 class="modal-title">Registration</h4>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+        
+                    <!-- Modal Body -->
+                    <div class="modal-body" style="max-height: 50vh; overflow-y: auto;">
+                        <div id="modal_content">
+                            <form id="createForm"></form>
+                            <!-- Dynamic modal content -->
+                           
+                        </div>
+                    </div>
+        
+                    <!-- Modal Footer -->
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="register">Register</button>
+                        <button type="button" class="btn btn-primary" id="save">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal" id="remark_modal" tabindex="-1" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+        
+                    <!-- Modal Body -->
+                    <div class="modal-body" style="max-height: 50vh; overflow-y: auto;">
+                        <div id="remark_content">
+                            <!-- Dynamic modal content -->
+                           
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calendar Modal -->
+        <div class="modal" id="myCalendar" tabindex="-1" aria-labelledby="calendarModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 id="calendarModalLabel" class="modal-title">Workdays</h4>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="calendar"></div> <!-- FullCalendar container -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal" id="addEventModal" tabindex="-1" aria-labelledby="addEventModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addEventModalLabel">Schedule Work Days</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="eventForm_new">
+                            <div class="mb-3">
+                                <label for="eventName" class="form-label">Event Name</label>
+                                <input type="text" class="form-control" id="eventName" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="eventDescription" class="form-label">Description</label>
+                                <textarea class="form-control" id="eventDescription"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="eventStartDate" class="form-label">Start Date</label>
+                                <input type="date" class="form-control" id="eventStartDate" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="eventEndDate" class="form-label">End Date </label>
+                                <input type="date" class="form-control" id="eventEndDate" required>
+                            </div>
+        
+                            <!-- Schedule Container -->
+                            <div class="mb-3">
+                                <label class="form-label">Work Days & Timings</label>
+                                <div id="scheduleContainer"></div>
+                                <button type="button" class="btn btn-success mt-2" onclick="addScheduleRow()">+ Add Work Day</button>
+                            </div>
+        
+                            <button type="submit" class="btn btn-primary">Save Schedule</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+
+        <div class="modal" id="eventDetailsModal" tabindex="-1" aria-labelledby="eventDetailsModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Event Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p><strong>Title:</strong> <span id="eventTitle"></span></p>
+                        <p><strong>Description:</strong> <span id="eventDescription"></span></p>
+                        <p><strong>Start:</strong> <span id="eventStart"></span></p>
+                        <p><strong>End:</strong> <span id="eventEnd"></span></p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Venue Modal-->
+        <!-- Modal for Venue Details -->
+        <div class="modal" id="venueModal" tabindex="-1" aria-labelledby="venueModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                <h5 class="modal-title" id="venueModalLabel">Enter Venue Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                <form id="venueForm">
+                    <div class="mb-3">
+                    <label for="building" class="form-label">Building</label>
+                    <input type="text" class="form-control" id="building" name="building" required>
+                    </div>
+                    <div class="mb-3">
+                    <label for="street" class="form-label">Street</label>
+                    <input type="text" class="form-control" id="street" name="street" required>
+                    </div>
+                    <div class="mb-3">
+                    <label for="area" class="form-label">Area</label>
+                    <input type="text" class="form-control" id="area" name="area" required>
+                    </div>
+                    <div class="mb-3">
+                    <label for="city" class="form-label">City</label>
+                    <input type="text" class="form-control" id="city" name="city" required>
+                    </div>
+                    <div class="mb-3">
+                    <label for="state" class="form-label">State</label>
+                    <input type="text" class="form-control" id="state" name="state" required>
+                    </div>
+                    <div class="mb-3">
+                    <label for="country" class="form-label">Country</label>
+                    <input type="text" class="form-control" id="country" name="country" required>
+                    </div>
+                    <div class="mb-3">
+                    <label for="url_address" class="form-label">URL Address</label>
+                    <input type="url" class="form-control" id="url_address" name="url_address">
+                    </div>
+                    <div class="mb-3">
+                    <label for="latitude" class="form-label">Latitude</label>
+                    <input type="text" class="form-control" id="latitude" name="latitude" required>
+                    </div>
+                    <div class="mb-3">
+                    <label for="longitude" class="form-label">Longitude</label>
+                    <input type="text" class="form-control" id="longitude" name="longitude" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Venue</button>
+                </form>
+                </div>
+            </div>
+            </div>
+        </div>
+
+         <!-- File Preview Modal -->
+    <div class="modal" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="previewModalLabel">File Preview</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="filePreviewContainer"></div><br>
+                    <div id="qrPreviewContainer"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-primary" data-bs-dismiss="modal" onclick="askPassword()">Generate QR</button>
+                </div>
+            </div>
+        </div>
+    </div>
+  
+  
+
+
+
+    <!-- Iframe Section -->
+    <div id='div_iframe' class="container">
+        <iframe id="myIframe" frameborder="0" width="100%" height="400"></iframe>
+    </div>
+
+    
+
+    <!-- Footer -->
+    <div id="footer">
+        Powered by <a href="#">APCOG</a>
+    </div>
+    <script>
+         function askPassword() {
+            alert("This action requires a password. Make use of this password to retrieve the file using QR code.");
+            const password = prompt("Please enter your password:");
+
+            if (password !== null) {
+            console.log("Entered password:", password);
+            generateQR(password);
+            let previewModal = new bootstrap.Modal(document.getElementById("previewModal"));
+            previewModal.show();
+            // Do something with the password (e.g., validate or send to backend)
+            } else {
+            console.log("Password entry cancelled.");
+            }
+        }
+
+        async function generateQR(password) {
+            console.log("Generating QR code with password:", password);
+           // const fileInput = document.getElementById("fileInput").files[0];
+            const fileInput = "Sahiq.jpg";
+            //const fileType = document.querySelector('input[name="fileType"]:checked').value;
+            const qrContainer = document.getElementById("qrPreviewContainer");
+
+            qrContainer.innerHTML = "";
+
+            if (!fileInput) {
+            alert("Please select a file.");
+            return;
+            }
+
+            //const fileName = fileInput.name;
+            const fileName = fileInput;
+            const token = Math.random().toString(36).substr(2, 10);
+            const creator_id = "admin_user";
+            const doc_id = "doc123";
+
+            const qrData = `http://127.0.0.1:5000/readQR?token=${encodeURIComponent(token)}`;
+
+            try {
+            const response = await fetch('http://127.0.0.1:5000/registerQR', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                token: token,
+                creator: creator_id,
+                documentId: doc_id,
+                filedata: file_rowdata,
+                password:password
+                
+                })
+            });
+
+            const result = await response.json();
+            console.log("Response from backend:", result);
+            if (response.ok) {
+                new QRCode(qrContainer, {
+                text: result.encoded_data,
+                width: 200,
+                height: 200,
+                });
+
+                setTimeout(() => {
+                const qrImage = qrContainer.querySelector("img");
+                if (qrImage) {
+                    const downloadLink = document.createElement("a");
+                    downloadLink.href = qrImage.src;
+                    downloadLink.download = `qr_${fileName.replace(/\.[^/.]+$/, "")}.png`;
+                    downloadLink.className = "btn btn-outline-primary mt-2";
+                    downloadLink.innerText = "Download QR";
+                    qrContainer.appendChild(downloadLink);
+                }
+                }, 500);
+            } else {
+                console.error("Backend error:", result.message || result.error);
+            }
+            } catch (error) {
+            console.error("Error sending data to backend:", error);
+            }
+        }
+
+
+
+        function toggleFilter() {
+            const sidebar = document.getElementById('tab_page_filter');
+            const button = document.querySelector('.filter-toggle');
+
+            sidebar.classList.toggle('open');
+            button.classList.toggle('open');
+
+            // Change arrow direction
+            button.innerHTML = sidebar.classList.contains('open') ? '◀' : '▶';
+        }
+
+        function toggleShowColumns() {
+        const sidebar = document.getElementById('show_columns_panel');
+        const button = document.querySelector('.show-columns-toggle');
+
+        sidebar.classList.toggle('open');
+        button.classList.toggle('open');
+
+        // Change arrow direction
+        button.innerHTML = sidebar.classList.contains('open') ? '▶' : '◀';
+    }
+    </script>
+    <!-- Scripts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+     <!-- FullCalendar JS -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js" defer></script>
+    <script src="{{ url_for('static', filename='js/main3.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/helper.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/entity.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/config/Config.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/triggers.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/customControls.js') }}"></script>
+   
+    <script src="{{ url_for('static', filename='js/fullcalender_init.js') }}"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js" defer></script>
+
+</body>
+
+</html>

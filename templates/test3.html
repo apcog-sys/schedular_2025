@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attachment Control Example</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#attachmentModal">Open Attachment Control</button>
+
+    <div class="modal fade" id="attachmentModal" tabindex="-1" aria-labelledby="attachmentModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Attachment Control</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <attachment-control></attachment-control>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="uploadButton">Upload</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="pdfPreviewContainer" style="display: none; border: 1px solid #ccc; padding: 10px; margin-top: 10px;">
+        <h3>PDF Preview</h3>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <script>
+        ///////////////////////////PDF CONVERTER START///////////////////////////////////
+        const { jsPDF } = window.jspdf;
+        //const XLSX = window.XLSX;
+        function detectFileTypeAndConvert(file) {
+            if (!file) {
+                alert("Please select a file!");
+                return;
+            }
+        
+            const fileName = file.name.toLowerCase();
+            const fileExtension = fileName.split(".").pop();
+        
+            const imageFormats = ["jpg", "jpeg", "png", "bmp", "gif", "webp"];
+            const docFormats = ["txt", "doc", "docx", "pdf"];
+            const excelFormats = ["xls", "xlsx", "csv"];
+            const audioFormats = ["mp3", "wav", "ogg"];
+            const videoFormats = ["mp4", "avi", "mkv", "mov"];
+        
+            if (imageFormats.includes(fileExtension)) {
+                convertImageToPDF(file);
+            } else if (docFormats.includes(fileExtension)) {
+                convertDocToPDF(file);
+            } else if (excelFormats.includes(fileExtension)) {
+                convertExcelToPDF(file);
+            } else if (audioFormats.includes(fileExtension)) {
+                convertAudioToPDF(file);
+            } else if (videoFormats.includes(fileExtension)) {
+                convertVideoToPDF(file);
+            } else {
+                alert("Unsupported file format!");
+            }
+        }
+        
+        // ✅ Convert Image to PDF
+        function convertImageToPDF(file) {
+            console.log("Converting Image to PDF...");
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                
+                const doc = new jsPDF();
+                doc.addImage(event.target.result, "JPEG", 10, 10, 180, 160);
+                doc.save("converted_image.pdf");
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // ✅ Convert DOC/DOCX/TXT to PDF (Requires `mammoth.js` or `docx-to-pdf` for complex documents)
+        function convertDocToPDF(file) {
+            console.log("Converting DOC/DOCX/TXT to PDF...");
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const text = event.target.result;
+                const doc = new jsPDF();
+                doc.text(text, 10, 10);
+                doc.save("converted_document.pdf");
+            };
+            reader.readAsText(file);
+        }
+        
+        // ✅ Convert Excel (XLS/XLSX) to PDF
+        function convertExcelToPDF(file) {
+            console.log("Converting Excel to PDF...");
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const workbook = XLSX.read(event.target.result, { type: "binary" });
+                const sheetName = workbook.SheetNames[0];
+                const data = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName]);
+        
+                const doc = new jsPDF();
+                doc.text(data, 10, 10);
+                doc.save("converted_excel.pdf");
+            };
+            reader.readAsBinaryString(file);
+        }
+        
+        // ✅ Convert Audio to PDF (Metadata only)
+        function convertAudioToPDF(file) {
+            console.log("Converting Audio to PDF...");
+            const doc = new jsPDF();
+            doc.text(`Audio File Metadata`, 10, 10);
+            doc.text(`Filename: ${file.name}`, 10, 20);
+            doc.text(`Size: ${(file.size / 1024).toFixed(2)} KB`, 10, 30);
+            doc.text(`Type: ${file.type}`, 10, 40);
+            doc.save("converted_audio_metadata.pdf");
+        }
+        
+        // ✅ Convert Video to PDF (Metadata only)
+        function convertVideoToPDF(file) {
+            console.log("Converting Video to PDF...");
+            const doc = new jsPDF();
+            doc.text(`Video File Metadata`, 10, 10);
+            doc.text(`Filename: ${file.name}`, 10, 20);
+            doc.text(`Size: ${(file.size / 1024 / 1024).toFixed(2)} MB`, 10, 30);
+            doc.text(`Type: ${file.type}`, 10, 40);
+            doc.save("converted_video_metadata.pdf");
+        }
+        
+    
+
+        ///////////////////////////PDF CONVRTER END/////////////////////////////////////
+
+        class AttachmentControl extends HTMLElement {
+            constructor() {
+                super();
+                this.attachShadow({ mode: "open" });
+                this.shadowRoot.innerHTML = `
+                    <style>
+                        .attachment-container { padding: 10px; border: 1px solid #ccc; border-radius: 5px; background: #f9f9f9; text-align: center; }
+                        
+                        video, canvas, audio, img { margin-top: 10px; width: 100%; max-width: 300px; display: none; }
+                        input, select { display: block; margin: 10px auto; align-items: left; }
+                        .image-wrapper, 
+                        .video-wrapper,
+                        .audio-wrapper{
+                            position: relative;
+                            display: flex;
+                            flex-grow: 1;  /* Allow elements to expand inside a flex container */
+                            justify-content: left;
+                            align-items: left;
+                           
+                        }
+                        .fileWrapper{
+                            position: relative;
+                            display: flex;
+                            flex-grow: 1;  /* Allow elements to expand inside a flex container */
+                            justify-content: left;
+                            align-items: left;
+                           
+                        }
+                       .delete-fileWrapper-btn {
+                            background: rgba(255, 255, 255, 0.8);
+                            color: white;
+                            border: none;
+                            border-radius: 5px;
+                            width: 20px;
+                            height: 20px;
+                            font-size: 12px;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            padding: 0;
+                            margin-right: 8px; /* Adds space between button and filename */
+                            z-index: 10;
+                        }
+
+                        
+
+                        .delete-btn {
+                            position: absolute;
+                            top: 5px;
+                            right: 5px;
+                            background: rgba(255, 255, 255, 0.8);
+                            color: white;
+                            border: none;
+                            border-radius: 50%;
+                            width: 20px;
+                            position: absolute;
+                            height: 20px;
+                            font-size: 12px;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: left;
+                            justify-content: left;
+                            padding: 0;
+                            left: 5px;  /* Move the button to the left */
+                            top: 5px;
+                            z-index: 10;
+                            border-radius: 5px;
+                        }
+
+                        .delete-btn:hover {
+                            background: rgba(255, 0, 0, 1);
+                        }
+                        attachmentType { display: block; text-align: left; width: 100%; }
+                        #file_pdf,
+                        #image_pdf,
+                        #audio_pdf,
+                        #video_pdf {
+                            display: flex;
+                            align-items: center;
+                            justify-content: left;
+                            margin-top: 10px;
+                        }
+
+                        #file_save-as-pdf,
+                        #image_save-as-pdf,
+                        #audio_save-as-pdf,
+                        #video_save-as-pdf {
+                            margin-right: 5px;
+                        }
+                    </style>
+                    <div class="attachment-container">
+                        <select id="attachmentType" style="align-items=left;  text-align=left; ">
+                            <option value="">-- Select --</option>
+                            <option value="file">📂 File</option>
+                            <option value="image">📸 Image</option>
+                            <option value="audio">🎤 Audio</option>
+                            <!-- <option value="qr">🔳 QR Code</option> -->
+                            <option value="video">📹 Video</option>
+                        </select>
+                        <div id="fileContainer" style="display:none;">
+                            <input type="file" id="fileInput" multiple style="display:block;"  style="align-items=left;  text-align=left; ">
+                            <div id="fileList"></div>
+                            <div id="file_pdf">
+                                 <input type="checkbox" id="file_save-as-pdf"> Save as PDF
+                            </div>
+                        </div>
+                        <div id="imageCaptureContainer" style="display:none;">
+                            <video autoplay></video>
+                            <button id="captureImage"  style="align-items=left;  text-align=left; ">Capture Image</button>
+                            <div id="imageList"></div>
+                            <div id="image_pdf">
+                                 <input type="checkbox" id="image_save-as-pdf"> Save as PDF
+                            </div>
+                        </div>
+
+                        <div id="recordedAudiosContainer" style="display:none;">
+                            <button id="toggleRecording"  style="align-items=left;  text-align=left; ">🎤 Start Recording</button>
+                            <audio controls></audio>
+                            <div id="audioList"></div>
+                            <div id="audio_pdf">
+                                 <input type="checkbox" id="audio_save-as-pdf"> Save as PDF
+                            </div>
+                        </div>
+
+                        <div id="videoRecordContainer" style="display:none;">
+                            <video autoplay></video>
+                            <button id="toggleVideoRecording"  style="align-items=left;  text-align=left; ">🎬 Start Recording</button>
+                            <video id="recordedVideo" controls></video>
+                            <div id="videoList"></div>
+                            <div id="video_pdf">
+                                 <input type="checkbox" id="video_save-as-pdf"> Save as PDF
+                            </div>
+                        </div>
+
+                        <div id="qrCodeContainer" style="display:none;">
+                            <input type="text" id="qrText" placeholder="Enter text for QR">
+                            <button id="generateQR">Generate QR Code</button>
+                            <div id="qrCode"></div>
+                        </div>
+                    </div>
+
+
+                `;
+                this.init();
+            }
+
+            init() {
+                this.attachmentType = this.shadowRoot.getElementById("attachmentType");
+                this.attachmentType.addEventListener("change", () => this.handleSelection());
+                
+                this.fileInput = this.shadowRoot.getElementById("fileContainer");
+                this.fileList = this.shadowRoot.getElementById("fileList");
+                
+                this.imageCaptureContainer = this.shadowRoot.getElementById("imageCaptureContainer");
+                this.video_image = this.shadowRoot.querySelector("#imageCaptureContainer video");
+                this.captureImageBtn = this.shadowRoot.getElementById("captureImage");
+                this.imageList = this.shadowRoot.getElementById("imageList");
+
+                this.audioContainer = this.shadowRoot.getElementById("recordedAudiosContainer");
+                this.audioButton = this.shadowRoot.getElementById("toggleRecording");
+                this.audioElement = this.shadowRoot.querySelector("audio");
+                this.audioList = this.shadowRoot.getElementById("audioList");
+
+                this.videoContainer = this.shadowRoot.getElementById("videoRecordContainer");
+                this.video = this.shadowRoot.querySelector("#videoRecordContainer video");
+                this.videoRecordButton = this.shadowRoot.getElementById("toggleVideoRecording");
+                this.recordedVideo = this.shadowRoot.getElementById("recordedVideo");
+                this.videoList = this.shadowRoot.getElementById("videoList");
+                
+                this.captureImageBtn.addEventListener("click", () => this.captureImage());
+                this.audioButton.addEventListener("click", () => this.toggleAudioRecording());
+                this.videoRecordButton.addEventListener("click", () => this.toggleVideoRecording());
+
+                this.qrCodeContainer = this.shadowRoot.getElementById("qrCodeContainer");
+                this.qrCodeDiv = this.shadowRoot.getElementById("qrCode");
+                this.qr_fileInput.addEventListener("change", (event) => this.generateQRCode(event));
+            }
+                
+            // Handle dropdown selection change
+            handleSelection() {
+                let type = this.attachmentType.value;
+
+                // Hide/show respective input areas
+                this.fileInput.style.display = type === "file" ? "block" : "none";
+                this.imageCaptureContainer.style.display = type === "image" ? "block" : "none";
+                this.audioContainer.style.display = type === "audio" ? "block" : "none";
+                this.videoContainer.style.display = type === "video" ? "block" : "none";
+
+                // Stop the live video feed if a new selection is made
+                if (this.mediaStream) {
+                    this.mediaStream.getTracks().forEach(track => track.stop());
+                    this.mediaStream = null;
+                }
+
+                 // Handle file selection
+                if (type === "file") {
+                    this.shadowRoot.getElementById("fileContainer").addEventListener("change", (event) => {
+                        this.fileList.innerHTML = ""; // Clear previous file list
+                        Array.from(event.target.files).forEach((file) => {
+                            let fileWrapper = document.createElement("div");
+                            fileWrapper.classList.add("fileWrapper");
+
+                            let deleteBtn = document.createElement("button");
+                            deleteBtn.textContent = "❌";
+                            deleteBtn.classList.add("delete-fileWrapper-btn");
+                            deleteBtn.addEventListener("click", () => fileWrapper.remove());
+
+                            let fileName = document.createElement("span");
+                            fileName.textContent = file.name;
+
+                            // Append elements in correct order
+                            fileWrapper.appendChild(deleteBtn);
+                            fileWrapper.appendChild(fileName);
+                            
+                            
+                            this.fileList.appendChild(fileWrapper);
+                        });
+                    });
+                }
+
+                // Handle image capture
+                if (type === "image") {
+                    navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+                        this.video_image.srcObject = stream;
+                        this.video_image.style.display = "block";
+                        this.mediaStream = stream;
+                    }).catch(console.error);
+                }
+
+                // Handle video capture
+                if (type === "video") {
+                    navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+                        this.video.srcObject = stream;
+                        this.video.style.display = "block";
+                        this.mediaStream = stream;
+                    }).catch(console.error);
+                }
+
+                // Handle QR Code selection
+                if (type === "qr") {
+                    this.fileInput.addEventListener("change", () => this.generateQRCode());
+                }
+            }
+
+            captureImage() {
+            let canvas = document.createElement("canvas");
+            let ctx = canvas.getContext("2d");
+            canvas.width = this.video_image.videoWidth;
+            canvas.height = this.video_image.videoHeight;
+            ctx.drawImage(this.video_image, 0, 0, canvas.width, canvas.height);
+
+            let imgWrapper = document.createElement("div");
+            imgWrapper.classList.add("image-wrapper");
+
+            let img = document.createElement("img");
+            img.src = canvas.toDataURL("image/png");
+            img.style.width = "100px";
+            img.style.margin = "5px";
+            img.style.display = "block"; 
+
+            let deleteBtn = document.createElement("button");
+            deleteBtn.textContent = "❌";
+            deleteBtn.classList.add("delete-btn");
+            deleteBtn.addEventListener("click", () => imgWrapper.remove());
+            imgWrapper.appendChild(deleteBtn);
+            imgWrapper.appendChild(img);
+            
+            this.imageList.appendChild(imgWrapper);
+        }
+    
+            generateQRCode(event) {
+                    let file = event.target.files[0];
+                    if (!file) return;
+                    
+                    let fileType = file.type.split("/")[0];
+                    if (fileType === "audio" || fileType === "video") {
+                        alert("Audio and video files are not supported for QR code generation.");
+                        return;
+                    }
+                    
+                    let reader = new FileReader();
+                    reader.onload = () => {
+                        this.qrCodeContainer.style.display = "block";
+                        this.qrCodeDiv.innerHTML = "";
+                        new QRCode(this.qrCodeDiv, {
+                            text: reader.result,
+                            width: 200,
+                            height: 200
+                        });
+                    };
+                    reader.readAsText(file);
+                }
+    
+            toggleAudioRecording() {
+                if (!this.mediaRecorder || this.mediaRecorder.state === "inactive") {
+                    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                        this.mediaRecorder = new MediaRecorder(stream);
+                        this.audioChunks = [];
+
+                        this.mediaRecorder.ondataavailable = event => this.audioChunks.push(event.data);
+                        this.mediaRecorder.onstop = () => {
+                            let audioBlob = new Blob(this.audioChunks, { type: "audio/webm" });
+                            let audioURL = URL.createObjectURL(audioBlob);
+
+                            let recordedAudiosContainer = document.getElementById("recordedAudiosContainer");
+                            if (!recordedAudiosContainer) {
+                                recordedAudiosContainer = document.createElement("div");
+                                recordedAudiosContainer.id = "recordedAudiosContainer";
+                                document.body.appendChild(recordedAudiosContainer);
+                            }
+
+                            let audioWrapper = document.createElement("div");
+                            audioWrapper.classList.add("audio-wrapper");
+
+                            let recordedAudio = document.createElement("audio");
+                            recordedAudio.src = audioURL;
+                            recordedAudio.controls = true;
+                            recordedAudio.style.display = "block";
+
+                            let deleteBtn = document.createElement("button");
+                            deleteBtn.textContent = "❌";
+                            deleteBtn.classList.add("delete-btn");
+                            deleteBtn.addEventListener("click", () => audioWrapper.remove());
+                            audioWrapper.appendChild(deleteBtn);
+                            audioWrapper.appendChild(recordedAudio);
+                            
+                            this.audioList.appendChild(audioWrapper);
+                        };
+
+                        this.mediaRecorder.start();
+                        this.audioButton.textContent = "🛑 Stop Recording";
+                    });
+                } else {
+                    this.mediaRecorder.stop();
+                    this.audioButton.textContent = "🎤 Start Recording";
+                }
+            }
+
+            toggleVideoRecording() {
+                if (!this.videoRecorder || this.videoRecorder.state === "inactive") {
+                    // Start recording
+                    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+                        if (!this.mediaStream) {  // Ensure the preview runs only once
+                            this.video.srcObject = stream;
+                            this.video.style.display = "block";
+                            this.mediaStream = stream;
+                        }
+                        
+                        this.videoRecorder = new MediaRecorder(stream);
+                        this.videoChunks = [];
+
+                        this.videoRecorder.ondataavailable = event => this.videoChunks.push(event.data);
+                        this.videoRecorder.onstop = () => {
+                            let videoBlob = new Blob(this.videoChunks, { type: "video/webm" });
+                            let videoURL = URL.createObjectURL(videoBlob);
+
+                            let recordedVideosContainer = document.getElementById("recordedVideosContainer");
+                            if (!recordedVideosContainer) {
+                                recordedVideosContainer = document.createElement("div");
+                                recordedVideosContainer.id = "recordedVideosContainer";
+                                document.body.appendChild(recordedVideosContainer);
+                            }
+
+                            let videoWrapper = document.createElement("div");
+                            videoWrapper.classList.add("video-wrapper");
+
+                            let recordedVideo = document.createElement("video");
+                            recordedVideo.src = videoURL;
+                            recordedVideo.controls = true;
+                            recordedVideo.style.display = "block";
+                            recordedVideo.style.width = "100%";
+
+                            let deleteBtn = document.createElement("button");
+                            deleteBtn.textContent = "❌";
+                            deleteBtn.classList.add("delete-btn");
+                            deleteBtn.addEventListener("click", () => videoWrapper.remove());
+
+                            videoWrapper.appendChild(deleteBtn);
+                            videoWrapper.appendChild(recordedVideo);
+                            this.videoList.appendChild(videoWrapper);
+                        };
+
+                        this.videoRecorder.start();
+                        this.videoRecordButton.textContent = "🛑 Stop Recording";
+                    }).catch(console.error);
+                } else {
+                    // Stop recording, but keep the live preview ON
+                    this.videoRecorder.stop();
+                    this.videoRecordButton.textContent = "🎬 Start Recording";
+                }
+            }
+            
+            
+        }
+        customElements.define("attachment-control", AttachmentControl);
+
+        /*document.getElementById("uploadButton").addEventListener("click", function () {
+        let attachmentControl = document.querySelector("attachment-control").shadowRoot;
+        
+        let files = attachmentControl.getElementById("fileInput")?.files || [];
+        let images = attachmentControl.querySelectorAll("#imageList img");
+        let audios = attachmentControl.querySelectorAll("#audioList audio");
+        let videos = attachmentControl.querySelectorAll("#videoList video");
+        // Do not allow files with all scripts and excecutable files (exe, bat, sh, etc.) [done]
+        //let disallowedExtensions = ['exe', 'bat', 'sh', 'js', 'py', 'php', 'pl', 'rb', 'html', 'css', 'xml'];
+        //Align all the control to left and reduce the width of modal. [has to be still checked]
+        //Restrict the size of file upto 10 mb using the file size variable. [done]
+        
+        // merge check box. if check then merge all the files into one PDF file and save it as a single file. [not done yet]
+        // insert a check box [save as PDF] if checked then save the file as PDF otherwise save as it is. [done]
+
+        let uploadFileSizeLimit= 10 * 1024 * 1024; // 10 MB in bytes
+        let formData = new FormData();
+
+        console.log("Files Selected:", files.length);
+        console.log("Images Found:", images.length);
+        console.log("Audios Found:", audios.length);
+        console.log("Videos Found:", videos.length);
+
+        for (let file of files) {
+            formData.append("files[]", file);
+            console.log("Appending File:", file.name);
+        }
+
+        let fetchPromises = [];
+
+        images.forEach((img, index) => {
+            let fetchPromise = fetch(img.src)
+                .then(res => res.blob())
+                .then(blob => {
+                    formData.append(`image_${index}`, blob, `image_${index}.png`);
+                    console.log("Appending Image:", `image_${index}.png`);
+                });
+            fetchPromises.push(fetchPromise);
+        });
+
+        audios.forEach((audio, index) => {
+            let fetchPromise = fetch(audio.src)
+                .then(res => res.blob())
+                .then(blob => {
+                    formData.append(`audio_${index}`, blob, `audio_${index}.webm`);
+                    console.log("Appending Audio:", `audio_${index}.webm`);
+                });
+            fetchPromises.push(fetchPromise);
+        });
+
+        videos.forEach((video, index) => {
+            let fetchPromise = fetch(video.src)
+                .then(res => res.blob())
+                .then(blob => {
+                    formData.append(`video_${index}`, blob, `video_${index}.webm`);
+                    console.log("Appending Video:", `video_${index}.webm`);
+                });
+            fetchPromises.push(fetchPromise);
+        });
+
+        Promise.all(fetchPromises).then(() => {
+            console.log("Final FormData:", formData);
+            uploadFiles(formData);
+        });
+
+        function uploadFiles(formData) {
+            fetch("/fileupload", {
+                method: "POST",
+                body: formData
+            })
+            //.then(response => response.json())
+            .then(response => {
+                if (response.ok) { // Checks if status is 200-299
+                    return response.json();
+                } else {
+                    throw new Error(`Upload failed with status: ${response.status}`);
+                }
+            })
+            .then(data => alert("Upload successful!"))
+            .catch(error => console.error("Upload error:", error));
+        }
+
+        if (fetchPromises.length === 0) {
+            console.log("Uploading immediately (No media blobs)");
+            uploadFiles(formData);
+        }
+    });*/
+
+        /*document.getElementById("uploadButton").addEventListener("click", function () {
+        let attachmentControl = document.querySelector("attachment-control").shadowRoot;
+        
+        let files = attachmentControl.getElementById("fileInput")?.files || [];
+        let images = attachmentControl.querySelectorAll("#imageList img");
+        let audios = attachmentControl.querySelectorAll("#audioList audio");
+        let videos = attachmentControl.querySelectorAll("#videoList video");
+        let saveAsPdfCheckbox = attachmentControl.getElementById("file_save-as-pdf");
+
+        let disallowedExtensions = ['exe', 'bat', 'sh', 'js', 'py', 'php', 'pl', 'rb', 'html', 'css', 'xml'];
+        let uploadFileSizeLimit = 10 * 1024 * 1024; // 10 MB
+
+        let formData = new FormData();
+        let fetchPromises = [];
+        let pdf = new jsPDF();
+
+        console.log("Files Selected:", files.length);
+        console.log("Images Found:", images.length);
+        console.log("Audios Found:", audios.length);
+        console.log("Videos Found:", videos.length);
+
+        for (let file of files) {
+            let fileExtension = file.name.split('.').pop().toLowerCase();
+            
+            if (disallowedExtensions.includes(fileExtension)) {
+                alert(`File type not allowed: ${file.name}`);
+                return;
+            }
+
+            if (file.size > uploadFileSizeLimit) {
+                alert(`File size exceeds 10 MB: ${file.name}`);
+                return;
+            }
+
+            if (saveAsPdfCheckbox.checked) {
+                let reader = new FileReader();
+                reader.onload = function (event) {
+                    pdf.text(event.target.result, 10, 10);
+                    if (file === files[files.length - 1]) {
+                        pdf.save("merged.pdf");
+                    }
+                };
+                reader.readAsText(file);
+            } else {
+                formData.append("files[]", file);
+                console.log("Appending File:", file.name);
+            }
+        }
+
+        images.forEach((img, index) => {
+            let fetchPromise = fetch(img.src)
+                .then(res => res.blob())
+                .then(blob => {
+                    formData.append(`image_${index}`, blob, `image_${index}.png`);
+                    console.log("Appending Image:", `image_${index}.png`);
+
+                    if (saveAsPdfCheckbox.checked) {
+                        let reader = new FileReader();
+                        reader.onload = function (event) {
+                            pdf.addImage(event.target.result, "JPEG", 10, 10, 180, 160);
+                            if (index === images.length - 1) pdf.save("merged.pdf");
+                        };
+                        reader.readAsDataURL(blob);
+                    }
+                });
+            fetchPromises.push(fetchPromise);
+        });
+
+        audios.forEach((audio, index) => {
+            let fetchPromise = fetch(audio.src)
+                .then(res => res.blob())
+                .then(blob => {
+                    formData.append(`audio_${index}`, blob, `audio_${index}.webm`);
+                    console.log("Appending Audio:", `audio_${index}.webm`);
+                });
+            fetchPromises.push(fetchPromise);
+        });
+
+        videos.forEach((video, index) => {
+            let fetchPromise = fetch(video.src)
+                .then(res => res.blob())
+                .then(blob => {
+                    formData.append(`video_${index}`, blob, `video_${index}.webm`);
+                    console.log("Appending Video:", `video_${index}.webm`);
+                });
+            fetchPromises.push(fetchPromise);
+        });
+
+        Promise.all(fetchPromises).then(() => {
+            console.log("Final FormData:", formData);
+            if (!saveAsPdfCheckbox.checked) {
+                uploadFiles(formData);
+            }
+        });
+
+        function uploadFiles(formData) {
+            fetch("/fileupload", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error(`Upload failed with status: ${response.status}`);
+                }
+            })
+            .then(data => alert("Upload successful!"))
+            .catch(error => console.error("Upload error:", error));
+        }
+
+        if (fetchPromises.length === 0 && !saveAsPdfCheckbox.checked) {
+            console.log("Uploading immediately (No media blobs)");
+            uploadFiles(formData);
+        }
+    });*/
+    document.getElementById("uploadButton").addEventListener("click", function () {
+    let attachmentControl = document.querySelector("attachment-control").shadowRoot;
+    
+    let files = attachmentControl.getElementById("fileInput")?.files || [];
+    let images = attachmentControl.querySelectorAll("#imageList img");
+    let saveAsPdfCheckbox = attachmentControl.getElementById("file_save-as-pdf");
+
+    let disallowedExtensions = ['exe', 'bat', 'sh', 'js', 'py', 'php', 'pl', 'rb', 'html', 'css', 'xml'];
+    let uploadFileSizeLimit = 10 * 1024 * 1024; // 10 MB
+    let formData = new FormData();
+    const { jsPDF } = window.jspdf;
+    let pdf = new jsPDF();
+
+    let pdfGenerated = false;
+
+    function showPdfPreview(pdfBlob) {
+        let url = URL.createObjectURL(pdfBlob);
+        let pdfContainer = document.getElementById("pdfPreviewContainer");
+        pdfContainer.innerHTML = `<iframe src="${url}" width="100%" height="500px"></iframe>`;
+        pdfContainer.style.display = "block";
+    }
+
+    for (let file of files) {
+        console.log("converting the File Selected:", file.name);
+        let fileExtension = file.name.split('.').pop().toLowerCase();
+        
+        if (disallowedExtensions.includes(fileExtension)) {
+            alert(`File type not allowed: ${file.name}`);
+            return;
+        }
+
+        if (file.size > uploadFileSizeLimit) {
+            alert(`File size exceeds 10 MB: ${file.name}`);
+            return;
+        }
+
+        if (saveAsPdfCheckbox.checked) {
+            let reader = new FileReader();
+            reader.onload = function (event) {
+                pdf.text(event.target.result, 10, 10);
+                pdfGenerated = true;
+            };
+            reader.readAsText(file);
+        } else {
+            formData.append("files[]", file);
+            console.log("Appending File:", file.name);
+        }
+    }
+
+    images.forEach((img, index) => {
+        let fetchPromise = fetch(img.src)
+            .then(res => res.blob())
+            .then(blob => {
+                if (saveAsPdfCheckbox.checked) {
+                    let reader = new FileReader();
+                    reader.onload = function (event) {
+                        pdf.addImage(event.target.result, "JPEG", 10, 10, 180, 160);
+                        pdfGenerated = true;
+                    };
+                    reader.readAsDataURL(blob);
+                } else {
+                    formData.append(`image_${index}`, blob, `image_${index}.png`);
+                }
+            });
+    });
+
+    setTimeout(() => {
+        if (saveAsPdfCheckbox.checked && pdfGenerated) {
+            let pdfBlob = pdf.output("blob");
+            showPdfPreview(pdfBlob);
+            pdf.save("merged.pdf");
+        } else {
+            uploadFiles(formData);
+        }
+    }, 1000);
+
+    function uploadFiles(formData) {
+        fetch("/fileupload", {
+            method: "POST",
+            body: formData
+        })
+        .then(response => response.ok ? response.json() : Promise.reject(`Upload failed: ${response.status}`))
+        .then(() => alert("Upload successful!"))
+        .catch(error => console.error("Upload error:", error));
+    }
+});
+
+
+    class QRControl extends HTMLElement {
+        constructor() {
+            super();
+            this.attachShadow({ mode: "open" });
+            this.shadowRoot.innerHTML = `
+                <style>
+                    #qrCode { margin-top: 10px; }
+                </style>
+                <div id="qrCode"></div>
+            `;
+        }
+
+        connectedCallback() {
+            this.qrCode = new QRCode(this.shadowRoot.getElementById("qrCode"), {
+                text: "https://example.com",
+                width: 128,
+                height: 128,
+            });
+        }
+    }
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

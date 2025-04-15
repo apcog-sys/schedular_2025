@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venue Control with Google Maps</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Google Maps API -->    
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB7B_oDycaI7WSD9izwwytnpJTQFe_GZT0&libraries=places"></script>
+</head>
+<body>
+
+    <!-- Button to Open Modal -->
+    <button type="button" class="btn btn-primary mt-3 ms-3" data-bs-toggle="modal" data-bs-target="#venueModal">
+        Open Venue Selector
+    </button>
+
+    <!-- Venue Modal -->
+    <div class="modal fade" id="venueModal" tabindex="-1" aria-labelledby="venueModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="venueModalLabel">Select Venue</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <venue-control></venue-control>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Venue Control Component -->
+    <script>
+        class VenueControl extends HTMLElement {
+            constructor() {
+                super();
+                this.attachShadow({ mode: "open" });
+
+                this.shadowRoot.innerHTML = `
+                    <style>
+                        .venue-container { padding: 10px; background: #f9f9f9; border-radius: 5px; }
+                        .venue-container label { display: block; margin-top: 8px; font-weight: bold; }
+                        .venue-container input { width: 100%; padding: 5px; margin-top: 5px; }
+                        #map { width: 100%; height: 300px; margin-top: 10px; border-radius: 5px; }
+                        .btn-fetch { width: 100%; margin-top: 10px; background-color: #007bff; color: white; border: none; padding: 8px; cursor: pointer; }
+                        .btn-fetch:hover { background-color: #0056b3; }
+                    </style>
+                    <div class="venue-container">
+                        <label>Building: <input type="text" id="building"></label>
+                        <label>Street: <input type="text" id="street"></label>
+                        <label>Area: <input type="text" id="area"></label>
+                        <label>City: <input type="text" id="city"></label>
+                        <label>State: <input type="text" id="state"></label>
+                        <label>Country: <input type="text" id="country"></label>
+                        <label>URL Address: <input type="url" id="url_address"></label>
+                        <button class="btn-fetch" id="fetchCoordinates">📍 Get Coordinates</button>
+                        <label>Latitude: <input type="text" id="latitude" readonly></label>
+                        <label>Longitude: <input type="text" id="longitude" readonly></label>
+                        <div id="map"></div>
+                    </div>
+                `;
+
+                this.init();
+            }
+
+            init() {
+                this.fetchCoordinatesBtn = this.shadowRoot.getElementById("fetchCoordinates");
+                this.latitudeInput = this.shadowRoot.getElementById("latitude");
+                this.longitudeInput = this.shadowRoot.getElementById("longitude");
+                this.mapDiv = this.shadowRoot.getElementById("map");
+
+                this.fetchCoordinatesBtn.addEventListener("click", () => this.fetchCoordinates());
+                this.initMap();
+            }
+
+            initMap() {
+                this.map = new google.maps.Map(this.mapDiv, {
+                    center: { lat: 20.5937, lng: 78.9629 }, // Default: India
+                    zoom: 5
+                });
+                this.marker = new google.maps.Marker({ map: this.map });
+            }
+
+            fetchCoordinates() {
+                const address = [
+                    this.shadowRoot.getElementById("building").value,
+                    this.shadowRoot.getElementById("street").value,
+                    this.shadowRoot.getElementById("area").value,
+                    this.shadowRoot.getElementById("city").value,
+                    this.shadowRoot.getElementById("state").value,
+                    this.shadowRoot.getElementById("country").value
+                ].filter(Boolean).join(", ");
+
+                if (!address) {
+                    alert("Please enter a valid address.");
+                    return;
+                }
+
+                const geocoder = new google.maps.Geocoder();
+                geocoder.geocode({ address: address }, (results, status) => {
+                    if (status === "OK") {
+                        const location = results[0].geometry.location;
+                        this.latitudeInput.value = location.lat();
+                        this.longitudeInput.value = location.lng();
+
+                        // Update map
+                        this.map.setCenter(location);
+                        this.map.setZoom(15);
+                        this.marker.setPosition(location);
+                    } else {
+                        alert("Geocode was not successful: " + status);
+                    }
+                });
+            }
+
+            // **Populate venue details**
+            set value(venueData) {
+                if (!venueData) return;
+                if (typeof venueData === "string") venueData = JSON.parse(venueData);
+
+                this.shadowRoot.getElementById("building").value = venueData.building || "";
+                this.shadowRoot.getElementById("street").value = venueData.street || "";
+                this.shadowRoot.getElementById("area").value = venueData.area || "";
+                this.shadowRoot.getElementById("city").value = venueData.city || "";
+                this.shadowRoot.getElementById("state").value = venueData.state || "";
+                this.shadowRoot.getElementById("country").value = venueData.country || "";
+                this.shadowRoot.getElementById("url_address").value = venueData.url_address || "";
+                this.latitudeInput.value = venueData.latitude || "";
+                this.longitudeInput.value = venueData.longitude || "";
+            }
+
+            // **Get venue data**
+            get value() {
+                return JSON.stringify({
+                    building: this.shadowRoot.getElementById("building").value,
+                    street: this.shadowRoot.getElementById("street").value,
+                    area: this.shadowRoot.getElementById("area").value,
+                    city: this.shadowRoot.getElementById("city").value,
+                    state: this.shadowRoot.getElementById("state").value,
+                    country: this.shadowRoot.getElementById("country").value,
+                    url_address: this.shadowRoot.getElementById("url_address").value,
+                    latitude: this.latitudeInput.value,
+                    longitude: this.longitudeInput.value
+                });
+            }
+        }
+
+        customElements.define("venue-control", VenueControl);
+    </script>
+
+    <!-- Bootstrap JS (for modal functionality) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

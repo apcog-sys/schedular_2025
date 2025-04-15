@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attachment Control Example</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#attachmentModal">Open Attachment Control</button>
+
+    <div class="modal fade" id="attachmentModal" tabindex="-1" aria-labelledby="attachmentModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Attachment Control</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <attachment-control></attachment-control>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AttachmentControl extends HTMLElement {
+            constructor() {
+                super();
+                this.attachShadow({ mode: "open" });
+                this.shadowRoot.innerHTML = `
+                    <style>
+                        .attachment-container { padding: 10px; border: 1px solid #ccc; border-radius: 5px; background: #f9f9f9; text-align: center; }
+                        button { margin: 5px; padding: 8px; cursor: pointer; }
+                        video, canvas, audio, img { margin-top: 10px; width: 100%; max-width: 300px; display: none; }
+                        input, select { display: block; margin: 10px auto; }
+                        .file-list { margin-top: 10px; }
+                        .file-item { display: flex; align-items: center; margin-bottom: 5px; }
+                        .file-item button { margin-left: 10px; }
+                    </style>
+                    <div class="attachment-container">
+                        <h4>Select Attachment Type</h4>
+                        <select id="attachmentType">
+                            <option value="">-- Select --</option>
+                            <option value="file">📂 File</option>
+                            <option value="image">📸 Image</option>
+                            <option value="audio">🎤 Audio</option>
+                            <option value="video">📹 Video</option>
+                        </select>
+
+                        <input type="file" id="fileInput" multiple style="display:none;">
+                        <div id="imageCaptureContainer" style="display:none;">
+                            <video autoplay></video>
+                            <button id="captureImage">Capture Image</button>
+                            <div id="imageList" class="file-list"></div>
+                        </div>
+
+                        <div id="audioRecordContainer" style="display:none;">
+                            <button id="toggleRecording">🎤 Start Recording</button>
+                            <div id="audioList" class="file-list"></div>
+                        </div>
+
+                        <div id="videoRecordContainer" style="display:none;">
+                            <button id="toggleVideoRecording">🎬 Start Recording</button>
+                            <div id="videoList" class="file-list"></div>
+                        </div>
+                    </div>
+                `;
+                this.init();
+            }
+
+            init() {
+                this.attachmentType = this.shadowRoot.getElementById("attachmentType");
+                this.attachmentType.addEventListener("change", () => this.handleSelection());
+                this.fileInput = this.shadowRoot.getElementById("fileInput");
+                this.imageCaptureContainer = this.shadowRoot.getElementById("imageCaptureContainer");
+                this.video = this.shadowRoot.querySelector("#imageCaptureContainer video");
+                this.captureImageBtn = this.shadowRoot.getElementById("captureImage");
+                this.imageList = this.shadowRoot.getElementById("imageList");
+                this.audioContainer = this.shadowRoot.getElementById("audioRecordContainer");
+                this.audioButton = this.shadowRoot.getElementById("toggleRecording");
+                this.audioList = this.shadowRoot.getElementById("audioList");
+                this.videoContainer = this.shadowRoot.getElementById("videoRecordContainer");
+                this.videoRecordButton = this.shadowRoot.getElementById("toggleVideoRecording");
+                this.videoList = this.shadowRoot.getElementById("videoList");
+                this.captureImageBtn.addEventListener("click", () => this.captureImage());
+                this.audioButton.addEventListener("click", () => this.toggleAudioRecording());
+                this.videoRecordButton.addEventListener("click", () => this.toggleVideoRecording());
+            }
+
+            handleSelection() {
+                let type = this.attachmentType.value;
+                this.fileInput.style.display = type === "file" ? "block" : "none";
+                this.imageCaptureContainer.style.display = type === "image" ? "block" : "none";
+                this.audioContainer.style.display = type === "audio" ? "block" : "none";
+                this.videoContainer.style.display = type === "video" ? "block" : "none";
+            }
+
+            captureImage() {
+                let canvas = document.createElement("canvas");
+                let ctx = canvas.getContext("2d");
+                canvas.width = this.video.videoWidth;
+                canvas.height = this.video.videoHeight;
+                ctx.drawImage(this.video, 0, 0, canvas.width, canvas.height);
+                let img = document.createElement("img");
+                img.src = canvas.toDataURL("image/png");
+                img.style.display = "block";
+                this.imageList.appendChild(img);
+            }
+
+            toggleAudioRecording() {
+                if (!this.mediaRecorder) {
+                    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                        this.mediaRecorder = new MediaRecorder(stream);
+                        let audioChunks = [];
+                        this.mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                        this.mediaRecorder.onstop = () => {
+                            let audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+                            let audio = document.createElement("audio");
+                            audio.controls = true;
+                            audio.src = URL.createObjectURL(audioBlob);
+                            let deleteBtn = this.createDeleteButton(audio);
+                            this.audioList.appendChild(audio);
+                            this.audioList.appendChild(deleteBtn);
+                        };
+                        this.mediaRecorder.start();
+                    });
+                } else {
+                    this.mediaRecorder.stop();
+                    this.mediaRecorder = null;
+                }
+            }
+
+            createDeleteButton(element) {
+                let deleteBtn = document.createElement("button");
+                deleteBtn.textContent = "❌ Delete";
+                deleteBtn.onclick = () => element.remove();
+                return deleteBtn;
+            }
+        }
+        customElements.define("attachment-control", AttachmentControl);
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

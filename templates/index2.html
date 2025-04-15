@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RBAC Scheduler</title>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</head>
+<body>
+
+    <h2>Login</h2>
+    <input type="text" id="username" placeholder="Username">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+
+    <h2>Dashboard</h2>
+    <p id="userRole"></p>
+
+    <button id="createBtn" style="display:none;" onclick="createEntity()">Create Entity</button>
+    <button id="listBtn" style="display:none;" onclick="listEntities()">List Entities</button>
+
+    <ul id="entityList"></ul>
+
+</body>
+</html>

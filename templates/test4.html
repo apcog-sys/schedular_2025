@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Secure QR Code Scanner</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(to right, #e3f2fd, #fff);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .card {
+      box-shadow: 0 5px 25px rgba(0, 0, 0, 0.1);
+      border-radius: 16px;
+      padding: 30px;
+      max-width: 600px;
+      width: 100%;
+    }
+    #reader {
+      width: 100%;
+      max-width: 320px;
+      margin: 20px auto;
+      display: none;
+    }
+    #scanResult {
+      font-size: 1rem;
+      color: #0d6efd;
+      margin-top: 20px;
+    }
+    #previewContent {
+      margin-top: 20px;
+    }
+    #textContent {
+      max-height: 200px;
+      overflow-y: auto;
+      background: #f8f9fa;
+      padding: 10px;
+      border-radius: 10px;
+      white-space: pre-wrap;
+    }
+    #imageContent img {
+      max-width: 100%;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="card text-center">
+    <h2 class="mb-4 text-primary">Secure QR Code Scanner</h2>
+
+    <!-- Password Field -->
+    <div class="mb-3">
+      <label for="secretPassword" class="form-label">Enter Password:</label>
+      <input type="password" class="form-control" id="secretPassword" placeholder="Enter password" oninput="toggleButtons()">
+    </div>
+
+    <!-- Webcam Scanner -->
+    <button id="webcamBtn" class="btn btn-primary mb-3" onclick="startWebcamScanner()" disabled>
+      📷 Scan via Webcam
+    </button>
+
+    <!-- File Upload -->
+    <div class="mb-3">
+      <label for="qrImageUpload" class="form-label">Or Upload QR Code Image</label>
+      <input type="file" class="form-control" id="qrImageUpload" accept="image/*" onchange="scanQRImage(event)" disabled>
+    </div>
+
+    <!-- Scanner Preview -->
+    <div id="reader"></div>
+
+    <!-- Scan Result -->
+    <div id="scanResult" class="fw-bold"></div>
+
+    <!-- File Content Preview -->
+    <div id="previewContent">
+      <div id="imageContent"></div>
+      <div id="textContent" class="text-start"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.9/minified/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  function toggleButtons() {
+    const password = document.getElementById("secretPassword").value;
+    const webcamBtn = document.getElementById("webcamBtn");
+    const fileInput = document.getElementById("qrImageUpload");
+
+    const isValid = password.trim().length > 0;
+    webcamBtn.disabled = !isValid;
+    fileInput.disabled = !isValid;
+  }
+
+  function validatePasswordBeforeAction() {
+    const password = document.getElementById("secretPassword").value;
+    if (!password.trim()) {
+      alert("Please enter your password before proceeding.");
+      return false;
+    }
+    return true;
+  }
+
+  function startWebcamScanner() {
+    if (!validatePasswordBeforeAction()) return;
+
+    const reader = document.getElementById("reader");
+    reader.style.display = "block";
+
+    const html5QrCode = new Html5Qrcode("reader");
+
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      qrData => {
+        html5QrCode.stop();
+        reader.style.display = "none";
+        displayScanResult(qrData);
+        callQRApi(qrData); // 👈 call backend
+      },
+      error => console.warn("Scanning error", error)
+    ).catch(err => {
+      alert("Camera error: " + err);
+    });
+  }
+
+  function scanQRImage(event) {
+    if (!validatePasswordBeforeAction()) return;
+
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, canvas.width, canvas.height);
+        if (code) {
+          const scannedToken = code.data;
+          //displayScanResult(scannedToken);
+          callQRApi(scannedToken);
+        } else {
+          alert("QR code not recognized.");
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function callQRApi(token) {
+    fetch(`/readQR?token=${encodeURIComponent(token)}&password=${encodeURIComponent(document.getElementById("secretPassword").value)}`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch from server.");
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log("API Response:", data);
+        if (data.file_data) {
+          renderFilePreview(data.file_data);
+        } else {
+          alert("✅ QR scanned, but no file data returned.");
+        }
+      })
+      .catch(error => {
+        console.error("API Error:", error);
+        alert("❌ Failed to reach the server.");
+      });
+  }
+
+  function renderFilePreview(fileData) {
+    const textContainer = document.getElementById("textContent");
+    const imageContainer = document.getElementById("imageContent");
+    textContainer.innerHTML = '';
+    imageContainer.innerHTML = '';
+
+    if (fileData.type === 'text') {
+      textContainer.textContent = fileData.content;
+    } else if (fileData.type === 'image') {
+      imageContainer.innerHTML = `<img src="${fileData.content}" alt="Scanned Image">`;
+    } else {
+      textContainer.textContent = "Unsupported file type.";
+    }
+  }
+
+  function displayScanResult(data) {
+    document.getElementById("scanResult").innerHTML = `✅ Scanned Token: <br><code>${data}</code>`;
+  }
+</script>
+
+</body>
+</html>

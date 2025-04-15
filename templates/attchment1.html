@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attachment Control Example</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#attachmentModal">Open Attachment Control</button>
+
+    <div class="modal fade" id="attachmentModal" tabindex="-1" aria-labelledby="attachmentModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Attachment Control</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <attachment-control></attachment-control>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AttachmentControl extends HTMLElement {
+            constructor() {
+                super();
+                this.attachShadow({ mode: "open" });
+                this.shadowRoot.innerHTML = `
+                    <style>
+                        .attachment-container { padding: 10px; border: 1px solid #ccc; border-radius: 5px; background: #f9f9f9; text-align: center; }
+                        button { margin: 5px; padding: 8px; cursor: pointer; }
+                        video, audio, img { margin-top: 10px; width: 100%; max-width: 300px; display: block; }
+                        .file-list { margin-top: 10px; text-align: left; }
+                        .file-item { display: flex; align-items: center; justify-content: space-between; padding: 5px; border-bottom: 1px solid #ccc; }
+                        .delete-btn { background: red; color: white; border: none; padding: 5px; cursor: pointer; }
+                    </style>
+                    <div class="attachment-container">
+                        <h4>Select Attachment Type</h4>
+                        <select id="attachmentType">
+                            <option value="">-- Select --</option>
+                            <option value="file">📂 File</option>
+                            <option value="image">📸 Image</option>
+                            <option value="audio">🎤 Audio</option>
+                            <option value="video">📹 Video</option>
+                        </select>
+
+                        <input type="file" id="fileInput" multiple style="display:none;">
+                        <div class="file-list" id="fileList"></div>
+                        <button id="uploadButton" class="btn btn-success" style="display:none;">Upload</button>
+                    </div>
+                `;
+                this.init();
+            }
+
+            init() {
+                this.attachmentType = this.shadowRoot.getElementById("attachmentType");
+                this.fileInput = this.shadowRoot.getElementById("fileInput");
+                this.fileList = this.shadowRoot.getElementById("fileList");
+                this.uploadButton = this.shadowRoot.getElementById("uploadButton");
+
+                this.attachmentType.addEventListener("change", () => this.handleSelection());
+                this.fileInput.addEventListener("change", (event) => this.handleFileUpload(event));
+                this.uploadButton.addEventListener("click", () => alert("Files uploaded successfully!"));
+            }
+
+            handleSelection() {
+                let type = this.attachmentType.value;
+                this.fileInput.style.display = type ? "block" : "none";
+            }
+
+            handleFileUpload(event) {
+                let files = Array.from(event.target.files);
+                files.forEach(file => this.addFileToList(file));
+                this.uploadButton.style.display = "block";
+            }
+
+            addFileToList(file) {
+                let fileItem = document.createElement("div");
+                fileItem.classList.add("file-item");
+                fileItem.innerHTML = `
+                    <span>${file.name}</span>
+                    <button class="delete-btn">🗑 Delete</button>
+                `;
+                fileItem.querySelector(".delete-btn").addEventListener("click", () => fileItem.remove());
+                this.fileList.appendChild(fileItem);
+            }
+        }
+        customElements.define("attachment-control", AttachmentControl);
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

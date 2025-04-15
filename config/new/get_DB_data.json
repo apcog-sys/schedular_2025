@@ -1,0 +1,35 @@
+{
+    "db_name":"event_scheduler2025",
+    "general":{
+        "entity_table_name":"entity",
+        "event_table_name":"event_new",
+        "alert_table_name":"alert",
+        "message_table_name":"message_details",
+        "subscriber_table_name":"subscriber",
+        "log_table_name":"log",
+        "appointment_table_name":"appointment"
+    },
+    "Entity Config":{
+        "Role Registry":"roles",
+        "Resource Category":"resource_type",
+        "Event Category":"event_type",
+        "Message Template":"message_details",
+        "Resource Registry":"resource_profile",
+        "Entity log":""
+    },
+    "Network Config":{
+        "Entity Category":"entity_categories",
+        "Entity Registry":"entity",
+        "Doc status":"doc_status_types"
+    },
+    "System Config":{
+        "Doc_status_type":"doc_status_types",
+        "com_settings":"message_details",
+        "system log":""
+    },
+    "Event Config":{
+        "Event Schedule":"event_new",
+        "Alert Schedule":"alert",
+        "Event log":""
+    }
+}
